@@ -52,14 +52,39 @@ jobs:
           npm i -D @capacitor/assets
           npx capacitor-assets generate --android
 
-      - name: Build debug APK
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          {
+            echo "RELEASE_STORE_FILE=release.keystore"
+            echo "RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
+            echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> android/gradle.properties
+          sed -i '/android {/a\
+    signingConfigs {\
+        release {\
+            storeFile file(RELEASE_STORE_FILE)\
+            storePassword RELEASE_STORE_PASSWORD\
+            keyAlias RELEASE_KEY_ALIAS\
+            keyPassword RELEASE_KEY_PASSWORD\
+        }\
+    }' android/app/build.gradle
+          sed -i '/release {/a\            signingConfig signingConfigs.release' android/app/build.gradle
+
+      - name: Build release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v5
         with:
           name: daftar-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
