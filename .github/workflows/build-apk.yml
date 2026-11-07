@@ -28,7 +28,7 @@ jobs:
           sed -i "s/__VERSION__/${GITHUB_SHA::7}/" www/sw.js
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ]; then
             sed -i "s|https://YOUR-PROJECT.supabase.co|${SUPABASE_URL}|" www/index.html
-            sed -i "s|YOUR-ANON-KEY|${SUPABASE_KEY}|" www/index.html
+                        sed -i "s|YOUR-ANON-KEY|${SUPABASE_KEY}|" www/index.html
           else
             echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY not set - app will show 'not linked'"
           fi
@@ -90,3 +90,34 @@ jobs:
         run: |
           mkdir -p assets
           cp icon-512.png assets/icon.png
+          cp icon-maskable-512.png assets/icon-foreground.png
+          npm i -D @capacitor/assets
+          npx capacitor-assets generate --android
+
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          {
+            echo "RELEASE_STORE_FILE=release.keystore"
+            echo "RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
+            echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> android/gradle.properties
+          python3 -c "p='android/app/build.gradle';c=open(p).read();signing='\n    signingConfigs {\n        release {\n            storeFile file(RELEASE_STORE_FILE)\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n    }\n';c=c.replace('android {','android {'+signing,1);bt=c.index('buildTypes');rel=c.index('release {',bt);ins=rel+len('release {');c=c[:ins]+'\n            signingConfig signingConfigs.release'+c[ins:];open(p,'w').write(c)"
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: daftar-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
