@@ -33,40 +33,6 @@ jobs:
             echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY not set - app will show 'not linked'"
           fi
 
-      - name: Add Android back button handling
-        run: |
-          cat > www/back.js <<'BACKJS'
-          /* زر الرجوع: يغلق النافذة المفتوحة أو يرجع لتاب الديون بدل ما يخرج من التطبيق */
-          (function(){
-            var ids=['callSheet','pickSheet','themeSheet','sheet','shopSheet'];
-            var scr={callSheet:'scrim3',pickSheet:'scrim2',themeSheet:'scrim',sheet:'scrim',shopSheet:'scrimS'};
-            var g=function(i){return document.getElementById(i)};
-            var depth=0,ignore=0;
-            function openList(){return ids.filter(function(i){var e=g(i);return e&&e.classList.contains('open')})}
-            function shopOn(){var t=g('tabShop');return !!t&&t.getAttribute('aria-pressed')==='true'}
-            function level(){return openList().length+(shopOn()?1:0)}
-            function sync(){
-              var n=level();
-              if(n>depth){for(var i=depth;i<n;i++)history.pushState({d:i+1},'');depth=n}
-              else if(n<depth){var k=depth-n;depth=n;ignore++;history.go(-k)}
-            }
-            addEventListener('popstate',function(){
-              if(ignore>0){ignore--;return}
-              depth=Math.max(depth-1,0);
-              var o=openList();
-              if(o.length){var s=g(scr[o[0]]);if(s)s.click()}
-              else if(shopOn()){var t=g('tabDebt');if(t)t.click()}
-              setTimeout(sync,50);
-            });
-            var mo=new MutationObserver(function(){sync()});
-            ids.concat(['tabShop']).forEach(function(i){
-              var e=g(i);if(e)mo.observe(e,{attributes:true,attributeFilter:['class','aria-pressed']});
-            });
-            setTimeout(sync,300);
-          })();
-          BACKJS
-          sed -i 's#</body>#<script src="back.js"></script></body>#' www/index.html
-
       - name: Install Capacitor
         run: |
           npm init -y
@@ -87,6 +53,8 @@ jobs:
           import android.os.Bundle;
           import android.view.View;
           import android.view.WindowManager;
+          import android.webkit.WebView;
+          import androidx.activity.OnBackPressedCallback;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
@@ -99,6 +67,17 @@ jobs:
                       getWindow().setAttributes(lp);
                   }
                   hideSystemUI();
+                  getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+                      @Override
+                      public void handleOnBackPressed() {
+                          final WebView wv = getBridge().getWebView();
+                          wv.evaluateJavascript(
+                              "(function(){try{return window.__daftarBack?window.__daftarBack():false}catch(e){return false}})()",
+                              value -> {
+                                  if (!"true".equals(value)) { moveTaskToBack(true); }
+                              });
+                      }
+                  });
               }
 
               @Override

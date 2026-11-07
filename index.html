@@ -3,7 +3,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="دفتر الديون">
-</head><body class="locked">
+<style>*{-webkit-tap-highlight-color:transparent}html,body{overscroll-behavior-y:none}button,a,[data-act],[data-a]{touch-action:manipulation}button:active{filter:none!important;opacity:.88}</style></head><body class="locked">
 <title>دفتر الديون</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -279,11 +279,11 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 
 
 /* splash: hands open the notebook, then zoom into the app */
-.splash{touch-action:none;position:fixed;inset:0;z-index:200;direction:ltr;background:var(--accent);perspective:1100px;overflow:hidden;transition:background .5s var(--ease),opacity .6s var(--ease),transform .7s var(--ease);will-change:transform,opacity}
+.splash{touch-action:none;position:fixed;inset:0;z-index:200;direction:ltr;background:var(--accent);perspective:1100px;overflow:hidden;transition:background .35s var(--ease),opacity .4s var(--ease),transform .45s var(--ease);will-change:transform,opacity}
 .splash.o{background:transparent}
 .splash.z{transform:scale(2.4);opacity:0}
 .nb{position:absolute;left:50%;top:50%;width:min(68vw,280px);height:min(48vh,380px);transform:translate(-50%,-50%);display:flex;animation:nbIn .6s var(--ease) both;transform-style:preserve-3d}
-.half{position:relative;flex:1;background:var(--accent-ink);box-shadow:0 18px 40px -14px rgba(0,0,0,.45);transition:transform .75s var(--ease);will-change:transform}
+.half{position:relative;flex:1;background:var(--accent-ink);box-shadow:0 18px 40px -14px rgba(0,0,0,.45);transition:transform .5s var(--ease);will-change:transform}
 .half.l{border-radius:18px 4px 4px 18px;margin-right:1px;transform-origin:left center}
 .half.r{border-radius:4px 18px 18px 4px;margin-left:1px;transform-origin:right center}
 .half::after{content:"";position:absolute;inset:12px;border:2px solid var(--accent);opacity:.25;border-radius:12px}
@@ -299,7 +299,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:70
 .half.r .hw svg{transform:scaleX(-1)}
 @keyframes nbIn{from{opacity:0;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes appZoom{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
-body.intro .wrap{animation:appZoom .9s var(--ease) both}
+body.intro .wrap{animation:appZoom .45s var(--ease) both}
 
 /* shopping checklist tab */
 .shopv{display:none}
@@ -1102,9 +1102,10 @@ body.locked #authScr{display:flex}
       db.collection('entries').onSnapshot(function(snap){
         var fresh=snap.docs.map(function(x){var o=Object.assign({},x.data());o.id=x.id;return o});
         if(!synced&&snap.metadata.fromCache&&!fresh.length&&entries.length)return;
-        entries=fresh;mode='cloud';saveLocal();
+        var same=(mode==='cloud'&&JSON.stringify(entries)===JSON.stringify(fresh));
+        entries=fresh;mode='cloud';if(!same)saveLocal();
         if(!snap.metadata.fromCache){synced=true;clearTimeout(slow)}
-        setChip(false);render();
+        setChip(false);if(!same)render();
       },function(){
         clearTimeout(slow);mode='local';setChip();render();
       });
@@ -1126,7 +1127,7 @@ body.locked #authScr{display:flex}
     var d=document,el=d.documentElement;
     function isFS(){return !!(d.fullscreenElement||d.webkitFullscreenElement)}
     function go(){
-      if(isFS()){off();return}
+      if(isFS()||(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())){off();return}
       var f=el.requestFullscreen||el.webkitRequestFullscreen;if(!f)return;
       try{var r=f.call(el,{navigationUI:'hide'});if(r&&r.catch)r.catch(function(){})}catch(e){}
     }
@@ -1139,15 +1140,15 @@ body.locked #authScr{display:flex}
   /* ---------- welcome splash (every launch + after 1 minute away) ---------- */
   (function(){
     var first=document.getElementById('splash');if(!first)return;
-    var tpl=first.outerHTML, AWAY=60000, hiddenAt=0, active=null;
+    var tpl=first.outerHTML, AWAY=300000, hiddenAt=0, active=null;
     function run(sp){
       var T=[],gone=false;active=sp;
       function at(ms,fn){T.push(setTimeout(fn,ms))}
       function open(){sp.classList.add('o');document.body.classList.add('intro')}
       function zoom(){sp.classList.add('z')}
-      function end(){if(gone)return;gone=true;if(sp.parentNode)sp.parentNode.removeChild(sp);if(active===sp)active=null;setTimeout(function(){document.body.classList.remove('intro')},1000)}
-      at(550,function(){sp.classList.add('h')});
-      at(1150,open);at(1850,zoom);at(2550,end);
+      function end(){if(gone)return;gone=true;if(sp.parentNode)sp.parentNode.removeChild(sp);if(active===sp)active=null;setTimeout(function(){document.body.classList.remove('intro')},500)}
+      at(250,function(){sp.classList.add('h')});
+      at(600,open);at(1050,zoom);at(1450,end);
     }
     function show(){
       if(active)return;
@@ -1375,7 +1376,7 @@ body.locked #authScr{display:flex}
     if(!/^\S+@\S+\.\S+$/.test(em)){msg('اكتب إيميل صحيح');return}
     if(!pw){msg('اكتب كلمة المرور');return}
     if(amode==='signup'&&pw.length<8){msg('كلمة المرور لازم 8 أحرف أو أكثر');return}
-    var b=g('aSend');b.disabled=true;msg('');
+    var b=g('aSend');b.disabled=true;b.textContent='جاري الانتظار…';msg('');
     try{
       var r;
       if(amode==='login'){
@@ -1391,7 +1392,7 @@ body.locked #authScr{display:flex}
         else msg(errTxt(r,'تعذر إنشاء الحساب، حاول مرة ثانية'));
       }
     }catch(e){msg('تأكد من اتصال الإنترنت وحاول مرة ثانية')}
-    b.disabled=false;
+    b.disabled=false;b.textContent=amode==='login'?'دخول':'إنشاء حساب';
   }
   async function verify(){
     var t=digits(g('aCode').value);
@@ -1507,13 +1508,6 @@ body.locked #authScr{display:flex}
     await fromHash();
     var s=sess();
     if(!s){screen();return}
-    if(s.exp<Date.now()+60000&&s.rt){
-      try{
-        var r=await api('/auth/v1/token?grant_type=refresh_token',{b:{refresh_token:s.rt}});
-        if(r.ok&&r.j.access_token)setSess(toSess(r.j,s));
-        else if(r.s>=400&&r.s<500){setSess(null);screen();return}
-      }catch(e){}
-    }
     unlock();
   }
   /* تسجيل الخروج: آخر شي داخل نافذة المظهر */
@@ -1555,8 +1549,29 @@ body.locked #authScr{display:flex}
 </script>
 
 <script>
+/* زر الرجوع بأندرويد: يغلق النافذة المفتوحة أو يرجع خطوة، وإذا ما اكو شي يرجع false فيطلع من التطبيق */
+window.__daftarBack=function(){
+  var g=function(i){return document.getElementById(i)};
+  var order=[['callSheet','scrim3'],['pickSheet','scrim2'],['themeSheet','scrim'],['sheet','scrim'],['shopSheet','scrimS']];
+  for(var i=0;i<order.length;i++){
+    var e=g(order[i][0]),sc=g(order[i][1]);
+    if(e&&e.classList.contains('open')&&sc){sc.click();return true}
+  }
+  var ts=g('tabShop');
+  if(ts&&ts.getAttribute('aria-pressed')==='true'){var td=g('tabDebt');if(td){td.click();return true}}
+  var w=g('wrap');
+  if(w&&w.getAttribute('data-v')==='detail'){var b=document.querySelector('#list [data-act="back"]');if(b){b.click();return true}}
+  return false;
+};
+</script>
+<script>
 /* تسجيل Service Worker: يخلي التطبيق يشتغل بدون إنترنت */
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+var NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+if(NATIVE&&'serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});
+  if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){});
+}
+if(!NATIVE&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
   addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})});
 }
 </script>
