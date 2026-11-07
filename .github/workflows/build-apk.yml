@@ -44,6 +44,14 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Generate app icon from project assets
+        run: |
+          mkdir -p assets
+          cp icon-512.png assets/icon.png
+          cp icon-maskable-512.png assets/icon-foreground.png
+          npm i -D @capacitor/assets
+          npx capacitor-assets generate --android
+
       - name: Build debug APK
         working-directory: android
         run: |
