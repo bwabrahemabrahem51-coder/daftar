@@ -458,7 +458,7 @@ body.locked #authScr{display:flex}
   <form id="debtForm" autocomplete="off" novalidate>
     <div class="row2" style="grid-template-columns:1fr">
       <label class="f" for="fName"><span>اسم الشخص</span>
-        <input id="fName" type="text" list="names" placeholder="مثلاً: أبو فلان" enterkeyhint="next">
+        <input id="fName" type="text" autocomplete="off" placeholder="مثلاً: أبو فلان" enterkeyhint="next">
       </label>
       <label class="f" for="fPhone"><span>رقم الهاتف (اختياري)</span>
         <input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="07xx xxx xxxx" maxlength="20">
@@ -472,7 +472,6 @@ body.locked #authScr{display:flex}
       <div class="f2"><span>تاريخ الدين</span><button type="button" class="fld" id="dateBtn"></button><input id="fDate" type="hidden"></div>
       <div class="f2"><span>وقت الدين</span><button type="button" class="fld" id="timeBtn"></button><input id="fTime" type="hidden"></div>
     </div>
-    <datalist id="names"></datalist>
     <div class="items-head">المواد</div>
     <div id="items"></div>
     <button type="button" class="btn dash" id="addItem">+ إضافة مادة ثانية</button>
@@ -706,7 +705,6 @@ body.locked #authScr{display:flex}
     $('totalSub').textContent=gs.length
       ?(owing?owingText(owing)+'، من أصل '+gs.length+' في الدفتر':'كل الحسابات مسددة')
       :'الدفتر فارغ، سجّل أول دين';
-    $('names').innerHTML=gs.map(function(g){return '<option value="'+esc(g.name)+'">'}).join('');
     var showSearch=gs.length>=3;
     $('searchBox').hidden=!showSearch;
 
