@@ -44,6 +44,64 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Add native receipt gallery saver
+        run: |
+          mkdir -p android/app/src/main/java/com/daftar/app
+          cat > android/app/src/main/java/com/daftar/app/ReceiptGalleryPlugin.java <<'JAVA'
+          package com.daftar.app;
+
+          import android.content.ContentValues;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.provider.MediaStore;
+          import android.util.Base64;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import java.io.OutputStream;
+
+          @CapacitorPlugin(name = "ReceiptGallery")
+          public class ReceiptGalleryPlugin extends Plugin {
+              @PluginMethod
+              public void save(PluginCall call) {
+                  String filename = call.getString("filename", "receipt.png");
+                  String data = call.getString("data", "");
+                  if (data.isEmpty()) { call.reject("بيانات الصورة فارغة"); return; }
+                  Uri uri = null;
+                  try {
+                      byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+                      ContentValues values = new ContentValues();
+                      values.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
+                      values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                          values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Daftar");
+                          values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                      }
+                      uri = getContext().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                      if (uri == null) throw new Exception("تعذر إنشاء ملف الصورة");
+                      try (OutputStream out = getContext().getContentResolver().openOutputStream(uri)) {
+                          if (out == null) throw new Exception("تعذر فتح ملف الصورة");
+                          out.write(bytes); out.flush();
+                      }
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                          ContentValues done = new ContentValues();
+                          done.put(MediaStore.Images.Media.IS_PENDING, 0);
+                          getContext().getContentResolver().update(uri, done, null, null);
+                      }
+                      JSObject result = new JSObject();
+                      result.put("saved", true);
+                      result.put("message", "تم حفظ الوصل في الاستديو — مجلد Daftar");
+                      call.resolve(result);
+                  } catch (Exception e) {
+                      if (uri != null) { try { getContext().getContentResolver().delete(uri, null, null); } catch (Exception ignored) {} }
+                      call.reject("تعذر حفظ الوصل في الاستديو: " + e.getMessage(), e);
+                  }
+              }
+          }
+          JAVA
+
       - name: Enable immersive fullscreen mode
         run: |
           cat > android/app/src/main/java/com/daftar/app/MainActivity.java <<'JAVA'
@@ -60,6 +118,7 @@ jobs:
           public class MainActivity extends BridgeActivity {
               @Override
               protected void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(ReceiptGalleryPlugin.class);
                   super.onCreate(savedInstanceState);
                   if (Build.VERSION.SDK_INT >= 28) {
                       WindowManager.LayoutParams lp = getWindow().getAttributes();

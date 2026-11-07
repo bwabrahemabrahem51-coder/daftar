@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="manifest" href="manifest.webmanifest">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#2D5BFF">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -1023,11 +1023,16 @@ body.locked #authScr{display:flex}
     if(!blob){toast('تعذر إنشاء الصورة');return}
     try{
       var fn='وصل دين - '+g.name+'.png';
-      if(dl){var r=await dl.save({filename:fn,data:blob});if(r&&r.status==='saved')toast('تم حفظ الوصل')}
+      var nativeGallery=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.Plugins&&window.Capacitor.Plugins.ReceiptGallery;
+      if(nativeGallery){
+        var dataUrl=await new Promise(function(resolve,reject){var fr=new FileReader();fr.onload=function(){resolve(String(fr.result).split(',')[1]||'')};fr.onerror=reject;fr.readAsDataURL(blob)});
+        var saved=await nativeGallery.save({filename:fn,data:dataUrl});
+        toast(saved&&saved.message?saved.message:'تم حفظ الوصل في الاستديو');
+      }else if(dl){var r=await dl.save({filename:fn,data:blob});if(r&&r.status==='saved')toast('تم حفظ الوصل')}
       else{
         var f=null;try{f=new File([blob],fn,{type:'image/png'})}catch(_){}
         if(f&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:fn})}
-        else{var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);toast('تم حفظ الوصل')}
+        else{var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);toast('تم تنزيل الوصل؛ افتح التنزيلات إذا لم يظهر في الاستديو')}
       }
     }catch(e){
       if(e&&(e.code==='declined'||e.name==='AbortError'))return;
@@ -1563,6 +1568,36 @@ window.__daftarBack=function(){
   if(w&&w.getAttribute('data-v')==='detail'){var b=document.querySelector('#list [data-act="back"]');if(b){b.click();return true}}
   return false;
 };
+</script>
+<script>
+/* سحب من حافة الشاشة للرجوع مثل تطبيقات أندرويد */
+(function(){
+  var sx=0,sy=0,active=false,edge=30,done=false;
+  function back(){
+    try{
+      if(window.__daftarBack&&window.__daftarBack())return true;
+      if(history.length>1){history.back();return true;}
+    }catch(e){}
+    return false;
+  }
+  document.addEventListener('touchstart',function(e){
+    if(!e.touches||e.touches.length!==1)return;
+    var t=e.touches[0],w=window.innerWidth;
+    active=(t.clientX<=edge||t.clientX>=w-edge);
+    sx=t.clientX;sy=t.clientY;done=false;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!active||done||!e.changedTouches||!e.changedTouches.length)return;
+    var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>=85&&Math.abs(dy)<75){
+      done=true;
+      /* لا نتدخل بسحب عمودي أو بالسحب العادي داخل المحتوى */
+      back();
+    }
+    active=false;
+  },{passive:true});
+  document.addEventListener('touchcancel',function(){active=false;},{passive:true});
+})();
 </script>
 <script>
 /* تسجيل Service Worker: يخلي التطبيق يشتغل بدون إنترنت */
