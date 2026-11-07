@@ -66,16 +66,7 @@ jobs:
             echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
             echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
           } >> android/gradle.properties
-          sed -i '/android {/a\
-    signingConfigs {\
-        release {\
-            storeFile file(RELEASE_STORE_FILE)\
-            storePassword RELEASE_STORE_PASSWORD\
-            keyAlias RELEASE_KEY_ALIAS\
-            keyPassword RELEASE_KEY_PASSWORD\
-        }\
-    }' android/app/build.gradle
-          sed -i '/release {/a\            signingConfig signingConfigs.release' android/app/build.gradle
+          python3 -c "import re;p='android/app/build.gradle';c=open(p).read();signing='\n    signingConfigs {\n        release {\n            storeFile file(RELEASE_STORE_FILE)\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n    }\n';c=c.replace('android {','android {'+signing,1);c=c.replace('release {','release {\n            signingConfig signingConfigs.release',1);open(p,'w').write(c)"
 
       - name: Build release APK
         working-directory: android
